@@ -57,3 +57,6 @@ replay_pid*.log
 
 # Local-only archive (old detailed changelogs etc.), never committed
 /archive/
+
+# The TV layout fork's fixed debug signing key (debug builds only; see app/build.gradle.kts).
+!app/tivi-debug.keystore

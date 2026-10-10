@@ -136,6 +136,15 @@ android {
 
     val releaseKeystore = signingValue("KEYSTORE_FILE", "owntv.keystoreFile")
     signingConfigs {
+        // TV layout fork: one fixed debug key, kept in the repo, so every CI debug APK installs as an
+        // update over the last one. Without it each runner signs with a freshly generated key and the
+        // TV refuses the update (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+        getByName("debug") {
+            storeFile = file("tivi-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (releaseKeystore != null) {
             create("release") {
                 storeFile = file(releaseKeystore)
