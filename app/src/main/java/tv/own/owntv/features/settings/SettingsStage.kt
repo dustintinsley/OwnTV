@@ -247,6 +247,9 @@ fun StageSettingsPage(
     settingsRoot: Boolean = true,
     /** Off where there is no Settings to search (the setup wizard reuses the Add a source pages). */
     showSearch: Boolean = true,
+    /** TV layout: the category list down the left of the Settings root. The page moves right to make
+     *  room for it, and the side panel then opens only for an editor or a page's own picture. */
+    sideList: (@Composable (Modifier) -> Unit)? = null,
     rows: @Composable ColumnScope.() -> Unit = {},
 ) {
     val searching = searchQuery.isNotBlank()
@@ -259,8 +262,15 @@ fun StageSettingsPage(
         BoxWithConstraints(modifier.fillMaxSize()) {
             // The mockup's 1920 px frame as fractions of the real width, so other zooms reflow.
             val w = maxWidth / 1920f
+            // With the category list the page is: list 48 → 468, rows 500 → 1300, panel 1340 → 1856.
+            val side = sideList != null
+            val rowsStart = if (side) 500 else 50
+            val rowsWidth = if (side) 800 else 1060
+            val panelStart = if (side) 1340 else 1160
+            val panelWidth = if (side) 516 else 696
+            sideList?.invoke(Modifier.padding(start = w * 48, top = 64.mpx, bottom = 40.mpx).width(w * 420).fillMaxHeight())
             Row(
-                Modifier.fillMaxWidth().padding(start = w * 64, end = w * 64, top = 128.mpx).height(60.mpx),
+                Modifier.fillMaxWidth().padding(start = w * (rowsStart + 14), end = w * 64, top = 128.mpx).height(60.mpx),
                 horizontalArrangement = Arrangement.spacedBy(16.mpx),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -297,18 +307,18 @@ fun StageSettingsPage(
             val rowsTop = if (toolbar != null) 300.mpx else 210.mpx
             if (toolbar != null) {
                 Row(
-                    Modifier.padding(start = w * 50, top = 210.mpx).width(w * 1060).height(84.mpx).padding(horizontal = 6.mpx),
+                    Modifier.padding(start = w * rowsStart, top = 210.mpx).width(w * rowsWidth).height(84.mpx).padding(horizontal = 6.mpx),
                     horizontalArrangement = Arrangement.spacedBy(8.mpx),
                     verticalAlignment = Alignment.CenterVertically,
                     content = toolbar,
                 )
             }
-            if (list != null) list(Modifier.padding(start = w * 50, top = rowsTop).width(w * 1060).fillMaxHeight())
+            if (list != null) list(Modifier.padding(start = w * rowsStart, top = rowsTop).width(w * rowsWidth).fillMaxHeight())
             else CompositionLocalProvider(LocalBringIntoViewSpec provides edgeScrollSpec) {
                 Column(
                     Modifier
-                        .padding(start = w * 50, top = rowsTop)
-                        .width(w * 1060)
+                        .padding(start = w * rowsStart, top = rowsTop)
+                        .width(w * rowsWidth)
                         .fillMaxHeight()
                         .focusRequester(rowsFocus)
                         .focusGroup()
@@ -318,18 +328,19 @@ fun StageSettingsPage(
                     content = rows,
                 )
             }
-            val help = panel.help
+            // Minimal TV layout: beside the category list the explanation panel stays closed.
+            val help = panel.help.takeUnless { side }
             val editor = panel.editor
             if (help != null || panelTop != null || editor != null) {
                 Column(
                     Modifier
-                        .padding(start = w * 1160, top = 240.mpx)
-                        .width(w * 696)
+                        .padding(start = w * panelStart, top = 240.mpx)
+                        .width(w * panelWidth)
                         .heightIn(max = maxHeight - 280.mpx)
                         .stageGlass(30.mpx)
                         .padding(26.mpx),
                 ) {
-                    if (editor != null) SettingPanelEditor(editor, help, onClosed = { panel.opener?.let { r -> runCatching { r.requestFocus() } } })
+                    if (editor != null) SettingPanelEditor(editor, panel.help, onClosed = { panel.opener?.let { r -> runCatching { r.requestFocus() } } })
                     else {
                         // A row that brings its own picture (Popup size's sample) shows it in place of the page's.
                         if (panelTop != null && help?.extra == null) panelTop()

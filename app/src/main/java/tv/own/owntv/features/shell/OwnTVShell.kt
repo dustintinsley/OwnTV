@@ -605,6 +605,10 @@ fun OwnTVShell(
     LaunchedEffect(selectedSection, playerMode) {
         if (selectedSection != MainSection.EPG || playerMode != PlayerMode.NONE) guidePinned = null
     }
+    // TV layout — any section opened from live TV's menu: Back at its top level goes back to the
+    // channel that was playing, full screen, rather than to the rail or More.
+    var liveReturn by remember { mutableStateOf<ChannelEntity?>(null) }
+    LaunchedEffect(playerMode) { if (playerMode != PlayerMode.NONE) liveReturn = null }
     val returnFromGuide: (ChannelEntity) -> Unit = { ch ->
         guidePinned = null
         restoreFocus = false
@@ -618,6 +622,7 @@ fun OwnTVShell(
         val playing = previewChannel?.takeIf { zapSource == MainSection.LIVE_TV }
         showChannelList = false
         exitPlayer()
+        liveReturn = playing
         if (section == MainSection.EPG && playing != null) {
             // The guide opens on the group being watched, at the playing channel's row, and the
             // channel carries on in the guide's video.
@@ -957,6 +962,7 @@ fun OwnTVShell(
             playerMode == PlayerMode.FULLSCREEN -> exitPlayer()
             // TV layout: Back from the guide opened over live TV goes back to that channel, full screen.
             playerMode == PlayerMode.NONE && selectedSection == MainSection.EPG && guidePinned != null -> guidePinned?.let(returnFromGuide)
+            playerMode == PlayerMode.NONE && liveReturn != null && !showExit && !showAvatarPicker && !showPlaylistPicker -> liveReturn?.let(returnFromGuide)
             showAvatarPicker -> showAvatarPicker = false
             showPlaylistPicker -> showPlaylistPicker = false
             showExit -> showExit = false
@@ -1262,7 +1268,7 @@ fun OwnTVShell(
                             onOpenPlaylist = { /* Phase 6: open setup/playlist */ },
                             // Settings is reached through More now, so Back out of its root goes
                             // back there rather than to the rail — one level out, not two.
-                            onBack = { restoreFocus = true; onSelectSection(MainSection.MORE) },
+                            onBack = { liveReturn?.let(returnFromGuide) ?: run { restoreFocus = true; onSelectSection(MainSection.MORE) } },
                             openEpgAdd = openEpgAdd,
                             onEpgAddConsumed = { openEpgAdd = false },
                             start = settingsStart,

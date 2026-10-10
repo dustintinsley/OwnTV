@@ -348,7 +348,7 @@ private fun TiviHeader(title: String, trailing: String?) {
 /** A flat, dense list row: a soft light plate when focused, nothing at rest. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TiviRow(
+internal fun TiviRow(
     height: Dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

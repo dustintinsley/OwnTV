@@ -302,6 +302,10 @@ fun SettingsScreen(
     val saveScroll = { savedScrollPx = pageScroll.value }
     // The rows column: fresh entry and a lost focus land here, on the page's first row.
     val rowsFocus = remember { FocusRequester() }
+    // TV layout: the category list's row for the group on show, where a fresh entry lands.
+    val categoryFocus = remember { FocusRequester() }
+    // Set when the category list changed the group: the list keeps focus instead of the rows taking it.
+    var groupFromList by remember { mutableStateOf(false) }
     LaunchedEffect(start) {
         if (start == null) return@LaunchedEffect
         tab = SettingsTab.ROOT
@@ -926,7 +930,8 @@ fun SettingsScreen(
         if (displayedGroup != selectedGroup) {
             runCatching { pageScroll.scrollTo(0) }
             displayedGroup = selectedGroup
-            if (videoRowKey == null) for (attempt in 0 until 10) { withFrameNanos { }; if (runCatching { rowsFocus.requestFocus() }.getOrDefault(false)) break }
+            if (videoRowKey == null && !groupFromList) for (attempt in 0 until 10) { withFrameNanos { }; if (runCatching { rowsFocus.requestFocus() }.getOrDefault(false)) break }
+            groupFromList = false
         }
     }
 
@@ -973,6 +978,8 @@ fun SettingsScreen(
             if (returningRowFocus != null || start?.search == true) return@LaunchedEffect
             repeat(10) {
                 withFrameNanos { }
+                // TV layout: a fresh entry lands on the category list, as a set-top box's settings do.
+                if (runCatching { categoryFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
                 if (runCatching { rowsFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
             }
         }
@@ -1210,6 +1217,20 @@ fun SettingsScreen(
             modifier = modifier,
             searchAutoEdit = searchAutoEdit,
             panelTop = if (group == SettingsGroup.APPEARANCE && !searching) ({ tv.own.owntv.features.settings.SettingsLivePreview() }) else null,
+            sideList = if (searching) null else { listModifier ->
+                tv.own.owntv.features.tivi.TiviSettingsCategories(
+                    selected = selectedGroup,
+                    onShowGroup = { g ->
+                        if (g != selectedGroup) {
+                            groupFromList = true
+                            selectedGroup = g
+                        }
+                    },
+                    rowsFocus = rowsFocus,
+                    entryFocus = categoryFocus,
+                    modifier = listModifier,
+                )
+            },
         ) {
             when {
                 searching && searchQuery.isBlank() -> Unit
