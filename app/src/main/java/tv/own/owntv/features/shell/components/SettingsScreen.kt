@@ -1054,6 +1054,9 @@ fun SettingsScreen(
                 chip = if (customAccent.isNotBlank()) customAccent.uppercase() else stringResource(accent.labelRes), chipTone = TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showAccent = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_focus_highlight), stringResource(R.string.settings_search_keywords_focus), OwnTVIcon.FOCUS_HIGHLIGHT, TileTone.SECONDARY,
                 chip = focusHighlightChip(focusHighlight, focusHighlightWidth), chipTone = TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showFocusHighlight = true },
+            // TV layout: found by name, it opens Appearance, where ◀ ▶ set it.
+            SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.tivi_overlay_opacity), stringResource(R.string.tivi_overlay_opacity_description), OwnTVIcon.LAYERS, TileTone.SECONDARY,
+                chip = stringResource(R.string.common_percent, overlayOpacity), chipTone = TileTone.SECONDARY) { searchQuery = ""; selectedGroup = SettingsGroup.APPEARANCE.ordinal },
             if (themeMode == ThemeMode.DARK && !glassOn) SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_ambient_glow), stringResource(R.string.settings_ambient_glow_description), OwnTVIcon.GLOW, TileTone.PRIMARY,
                 chip = stringResource(if (ambientGlowEnabled) R.string.common_on else R.string.common_off), chipTone = if (ambientGlowEnabled) TileTone.PRIMARY else TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showAmbientGlow = true } else null,
         SettingsSearchEntry(
