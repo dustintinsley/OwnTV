@@ -31,4 +31,14 @@ object TiviDefaults {
     }
 
     private const val FLOATING_NAV_KEY = "floating_nav_applied"
+
+    /** Live preview off and Preview audio on, once per install. */
+    suspend fun applyPreviewDefaultsOnce(context: Context, apply: suspend () -> Unit) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(PREVIEW_DEFAULTS_KEY, false)) return
+        runCatching { apply() }
+            .onSuccess { prefs.edit { putBoolean(PREVIEW_DEFAULTS_KEY, true) } }
+    }
+
+    private const val PREVIEW_DEFAULTS_KEY = "preview_defaults_applied"
 }

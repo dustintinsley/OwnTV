@@ -989,13 +989,6 @@ class LiveViewModel(
         live.preview(channel, muted = !livePreviewAudio.value)
     }
 
-    /** TV layout: the channel carried into the guide from full screen keeps its sound, whatever the
-     *  preview-audio setting says for channels merely browsed past. */
-    fun playPreviewWithSound(channel: ChannelEntity) {
-        if (channel.categoryId != null && channel.categoryId in hiddenCategoryIds.value) return
-        live.preview(channel, muted = false)
-    }
-
     // --- Multiview: channels kept from the browse screen ------------------------------------------
     // The plan's second entry point: pick two to four channels from the Live list, then press play and
     // the grid opens already filled. Held here rather than in the shell because the context menu that

@@ -845,6 +845,7 @@
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	release
 1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	floating_nav_applied
 1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	live_first_applied_$profileId
+1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	preview_defaults_applied
 1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	tivi_layout
 1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviPrefs.kt	guide_ok_full_screen
 1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviPrefs.kt	tivi_layout

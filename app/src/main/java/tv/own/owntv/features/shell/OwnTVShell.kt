@@ -469,6 +469,12 @@ fun OwnTVShell(
         tv.own.owntv.features.tivi.TiviDefaults.applyFloatingNavOnce(startupContext) {
             resumeSettings.setNavStyle(tv.own.owntv.core.settings.SettingsRepository.NavStyle.FLOATING)
         }
+        // The guide keeps the channel being watched, with its sound, rather than previewing whatever
+        // row has focus: Live preview off, Preview audio on. Both stay switchable in Settings → Live TV.
+        tv.own.owntv.features.tivi.TiviDefaults.applyPreviewDefaultsOnce(startupContext) {
+            resumeSettings.setLivePreviewEnabled(false)
+            resumeSettings.setLivePreviewAudio(true)
+        }
         when (resumeSettings.startupMode(pid).first()) {
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> {
                 val ch = liveVm.lastWatchedLiveChannel()
@@ -620,7 +626,7 @@ fun OwnTVShell(
             guidePinned = playing
             scope.launch {
                 withFrameNanos { }
-                liveVm.playPreviewWithSound(playing)
+                liveVm.playPreview(playing)
             }
         }
         if (section == MainSection.SEARCH) {
