@@ -669,7 +669,7 @@ fun StageSettingRow(
         modifier = modifier
             .focusRequester(self)
             .fillMaxWidth()
-            .height(84.mpx)
+            .height(72.mpx)
             .then(
                 if (onStep != null) {
                     Modifier.onPreviewKeyEvent { e ->
@@ -691,7 +691,7 @@ fun StageSettingRow(
             horizontalArrangement = Arrangement.spacedBy(18.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OwnTVIcon(icon, StageColors.Muted, Modifier.size(24.mpx))
+            // TV layout: a plain menu row — title, the line under it and the value; no leading icon.
             Column(Modifier.weight(1f)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.mpx), verticalAlignment = Alignment.CenterVertically) {
                     Text(title, style = stageText(21, 700), color = if (enabled) StageColors.Text else StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))

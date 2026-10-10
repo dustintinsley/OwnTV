@@ -98,7 +98,9 @@ fun MoreScreen(
     vm: MoreCountsViewModel = koinViewModel(),
     settingsVm: SettingsViewModel = koinViewModel(),
 ) {
-    var selected by rememberSaveable { mutableStateOf(MoreItem.SETTINGS) }
+    // TV layout: Settings is a page of its own (category list + settings), opened straight from its
+    // row here, so the sheet starts on the first of its own pages instead of a grid of Settings cards.
+    var selected by rememberSaveable { mutableStateOf(MoreItem.FAVORITES) }
     val itemFocus = remember { MoreItem.entries.associateWith { FocusRequester() } }
     // What OK / ▶ focuses on the page: a fixed target, or the page's own choice (its first row).
     val pageTarget = remember { FocusRequester() }
@@ -108,7 +110,12 @@ fun MoreScreen(
     val backToSheet: () -> Unit = { runCatching { itemFocus.getValue(selected).requestFocus() } }
     // Like the rail: ▲ ▼ move focus, OK selects the item (its page shows, focus stays on the item),
     // ▶ goes into the page that is shown (owner).
-    val choose: (MoreItem) -> Unit = { item -> if (item != selected) { selected = item; pageEntry = null } }
+    val choose: (MoreItem) -> Unit = { item ->
+        when {
+            item == MoreItem.SETTINGS -> onOpenSettings(null, false)
+            item != selected -> { selected = item; pageEntry = null }
+        }
+    }
 
     // The rail's ▶ lands on the item the sheet was last on.
     DisposableEffect(onEntryHook) {
@@ -196,11 +203,8 @@ fun MoreScreen(
         ) {
             val setEntry: (() -> Boolean) -> Unit = { pageEntry = it }
             when (selected) {
-                MoreItem.SETTINGS -> SettingsPage(
-                    entry = pageTarget, pinned = pinned.size,
-                    onOpenGroup = { onOpenSettings(it, false) },
-                    onSearch = { onOpenSettings(null, true) },
-                )
+                // Opened as its own page (see [choose]); nothing is drawn here for it.
+                MoreItem.SETTINGS -> Box(Modifier.focusRequester(pageTarget).focusGroup())
                 MoreItem.FAVORITES -> FavouritesPage(
                     vm = vm, setEntry = setEntry,
                     onPlayChannel = onPlayChannel, onPlayMovie = { onPlayMovie(it, 0L) }, onOpenSeries = onOpenSeries,

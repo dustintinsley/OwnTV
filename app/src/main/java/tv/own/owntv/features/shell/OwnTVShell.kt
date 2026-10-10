@@ -594,9 +594,10 @@ fun OwnTVShell(
     // TV layout — the menu at the far left of the channel overlay. Sections the playlist hides stay
     // hidden; Search, More and Settings are always there, as they are in the rail.
     val tiviMenuSections = remember(visibleSections) {
+        // Short on purpose: live TV itself is the home, and the channel list is this overlay.
         listOf(
-            MainSection.EPG, MainSection.LIVE_TV, MainSection.HOME, MainSection.MOVIES, MainSection.SERIES,
-            MainSection.SEARCH, MainSection.DOWNLOADS, MainSection.MORE, MainSection.SETTINGS,
+            MainSection.EPG, MainSection.MOVIES, MainSection.SERIES, MainSection.DOWNLOADS,
+            MainSection.SEARCH, MainSection.MORE, MainSection.SETTINGS,
         ).filter { it in visibleSections || it == MainSection.SEARCH || it == MainSection.MORE || it == MainSection.SETTINGS }
     }
     // TV layout — the guide opened from live TV keeps that channel playing in its video, and Back
@@ -1484,30 +1485,15 @@ fun OwnTVShell(
             }
           }
             tv.own.owntv.features.shell.components.StageStatusCluster(
-                continuePill = continueTarget?.let { target ->
-                    val live = target.kind == tv.own.owntv.features.home.ContinueKind.LIVE
-                    tv.own.owntv.features.shell.components.ContinuePill(
-                        icon = if (live) OwnTVIcon.LIVE_TV else OwnTVIcon.PLAY,
-                        iconFilled = !live,
-                        action = stringResource(
-                            when (target.action) {
-                                tv.own.owntv.features.home.ContinueAction.RESUME -> R.string.content_action_resume
-                                tv.own.owntv.features.home.ContinueAction.PLAY -> R.string.content_action_play
-                                tv.own.owntv.features.home.ContinueAction.NEXT_UP -> R.string.content_action_next_episode
-                                tv.own.owntv.features.home.ContinueAction.LAST_CHANNEL -> R.string.content_action_last_channel
-                            },
-                        ),
-                        title = target.name,
-                        onClick = continueLastWatched,
-                    )
-                },
+                // TV layout: a quiet corner — no Continue chip and no weather, just the playlist and the clock.
+                continuePill = null,
                 audioBar = audioBarContent,
                 playlistLabel = playlistLabel,
                 playlistInteractive = playlists.size > 1,
                 onPlaylistClick = { showPlaylistPicker = true },
                 // Out of reach from deep in a list, as the old top bar was: from the rail or on Home only.
                 pillsFocusable = focusedLayer == ShellLayer.SIDEBAR || clusterFocused || selectedSection == MainSection.HOME,
-                weatherInfo = weatherInfo,
+                weatherInfo = null,
                 weatherFahrenheit = weatherFahrenheit,
                 clockColors = clockColors,
                 playlistDownFocusRequester = homeFirstRowFocus.takeIf { selectedSection == MainSection.HOME },
