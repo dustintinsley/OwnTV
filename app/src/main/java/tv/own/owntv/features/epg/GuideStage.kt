@@ -109,7 +109,18 @@ internal fun GuideVideo(
     previewEngine: tv.own.owntv.player.LivePreviewEngine,
     showVideo: Boolean,
     modifier: Modifier = Modifier,
+    /** TV layout: the guide is drawn over the playing channel, so this is only a frame onto it. */
+    seeThrough: Boolean = false,
 ) {
+    if (seeThrough) {
+        Box(
+            modifier
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(28.mpx))
+                .drawBehind { drawInnerRing(Color.White.copy(alpha = 0.18f), 1.5f.mpx.toPx(), 28.mpx.toPx()) },
+        )
+        return
+    }
     val previewState by previewEngine.state.collectAsStateWithLifecycle()
     val playing = showVideo && previewState != tv.own.owntv.player.LivePreviewEngine.State.ERROR &&
         previewState != tv.own.owntv.player.LivePreviewEngine.State.IDLE

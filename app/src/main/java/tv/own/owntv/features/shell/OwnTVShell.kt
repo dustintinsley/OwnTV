@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -333,6 +334,24 @@ fun OwnTVShell(
     var showChannelList by remember { mutableStateOf(false) }
     // In-player watch-history list (Right while controls hidden, live only).
     var showHistoryList by remember { mutableStateOf(false) }
+    // TV layout — a section opened from the player (Settings, the guide, Movies…) is drawn OVER the
+    // playing video instead of replacing it: the stream carries on full screen underneath, the HUD
+    // steps aside, and Back puts the picture back exactly as it was.
+    var browseOverVideo by remember { mutableStateOf(false) }
+    // The live channel that was on screen when it opened; guide/list focus moves the "current channel"
+    // as the user browses, so it is put back on close.
+    var backdropChannel by remember { mutableStateOf<ChannelEntity?>(null) }
+    var browseFocused by remember { mutableStateOf(false) }
+    val tiviContext = androidx.compose.ui.platform.LocalContext.current
+    val overlayOpacity by remember(tiviContext) { tv.own.owntv.features.tivi.TiviPrefs.overlayOpacityFlow(tiviContext) }
+        .collectAsStateWithLifecycle()
+    LaunchedEffect(playerMode) { if (playerMode != PlayerMode.FULLSCREEN) browseOverVideo = false }
+    val overVideo = browseOverVideo && playerMode == PlayerMode.FULLSCREEN
+    val closeBrowse: () -> Unit = {
+        browseOverVideo = false
+        backdropChannel?.let { liveVm.onChannelFocused(it) }
+        backdropChannel = null
+    }
     // Multiview: the grid, while it is up, and which tile is waiting for a channel to be picked.
     val multiviewEnabled by settingsRepo.multiviewEnabled.collectAsStateWithLifecycle(false)
     val recordWatchingEnabled by settingsRepo.recordWhatImWatching.collectAsStateWithLifecycle(false)
@@ -548,6 +567,8 @@ fun OwnTVShell(
     // mini-player, in which case it stays docked and just swaps to the newly-selected stream (the VM
     // already started it), so picking a channel updates the PiP window in place (#6).
     fun openFullscreen(source: MainSection = selectedSection) {
+        browseOverVideo = false
+        backdropChannel = null
         restoreFocus = false
         zapSource = source
         homeVm.stopPreview()
@@ -612,6 +633,8 @@ fun OwnTVShell(
     LaunchedEffect(playerMode) { if (playerMode != PlayerMode.NONE) liveReturn = null }
     val returnFromGuide: (ChannelEntity) -> Unit = { ch ->
         guidePinned = null
+        browseOverVideo = false
+        backdropChannel = null
         restoreFocus = false
         liveVm.watchFromGuide(ch)
         zapSource = MainSection.LIVE_TV
@@ -622,25 +645,25 @@ fun OwnTVShell(
     val openSectionFromPlayer: (MainSection) -> Unit = { section ->
         val playing = previewChannel?.takeIf { zapSource == MainSection.LIVE_TV }
         showChannelList = false
-        exitPlayer()
-        liveReturn = playing
+        backdropChannel = playing
         if (section == MainSection.EPG && playing != null) {
-            // The guide opens on the group being watched, at the playing channel's row, and the
-            // channel carries on in the guide's video.
+            // The guide opens on the group being watched, at the playing channel's row.
             epgVm.setCategoryFilter(zapListKey ?: playing.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) })
             epgVm.noteChannelTuned(playing)
-            guidePinned = playing
-            scope.launch {
-                withFrameNanos { }
-                liveVm.playPreview(playing)
-            }
         }
         if (section == MainSection.SEARCH) {
             searchVm.setQuery("")
             trendingSearchActive = false
             restoreTrendingSearchFocus = false
         }
+        restoreFocus = true
         onSelectSection(section)
+        browseOverVideo = true
+        // The section places its own focus as it opens; if nothing took it, put it in the content.
+        scope.launch {
+            repeat(4) { withFrameNanos { } }
+            if (!browseFocused) runCatching { contentAreaFocus.requestFocus() }
+        }
     }
     // TV layout — the bottom channel banner shows for a few seconds whenever full-screen live TV
     // opens or changes channel.
@@ -955,6 +978,8 @@ fun OwnTVShell(
 
     BackHandler {
         when {
+            // TV layout: Back at the top of a section opened over the video closes it — the stream never stopped.
+            overVideo && !showExit && !showAvatarPicker && !showPlaylistPicker -> closeBrowse()
             // TV layout: live TV full screen is the home of the app, so Back there asks to exit (the
             // channel overlay's menu is the way into everything else). Films and catch-up close as before.
             playerMode == PlayerMode.FULLSCREEN && showExit -> showExit = false
@@ -1108,10 +1133,13 @@ fun OwnTVShell(
                 }
             },
     ) {
-      // Browse UI — hidden while the player is fullscreen (stays visible behind the docked mini-player).
-      if (playerMode != PlayerMode.FULLSCREEN) {
+      // Browse UI — hidden while the player is fullscreen (stays visible behind the docked mini-player),
+      // except in the TV layout's over-video mode, where it is drawn above the full-screen picture.
+      if (playerMode != PlayerMode.FULLSCREEN || overVideo) {
         Column(
             modifier = Modifier.fillMaxSize()
+                .then(if (overVideo) Modifier.zIndex(1f) else Modifier)
+                .onFocusChanged { browseFocused = it.hasFocus }
                 // One group with a restorer: leaving for the mini player and coming back lands on the
                 // exact control that was focused, without every screen having to remember its own.
                 .focusRequester(shellContentFocus)
@@ -1171,11 +1199,12 @@ fun OwnTVShell(
                     // rounded borders define regions on one continuous dark-green surface.
                     // Glass effect: transparent here (shellBase) when a background image is active, so
                     // the image shows through the gaps between the content panels.
-                    .background(shellBase)
+                    .background(if (overVideo) Color.Black.copy(alpha = overlayOpacity / 100f) else shellBase)
                     // A Stage screen's page, across the whole width — under a docked rail's reserve too.
                     // Over a picture it draws only the Accent light; the picture shows through.
+                    // Over the playing video (TV layout) it is the see-through scrim above instead.
                     .then(
-                        if (stageScreen) {
+                        if (stageScreen && !overVideo) {
                             Modifier.stageBackground(colors.primary)
                         } else Modifier,
                     ),
@@ -1188,6 +1217,8 @@ fun OwnTVShell(
                     liveVm.watchFromGuide(ch)
                     zapSource = MainSection.LIVE_TV
                     homeVm.stopPreview()
+                    browseOverVideo = false
+                    backdropChannel = null
                     // Live TV set to play externally → the channel went to another app;
                     // don't mount the fullscreen player over it.
                     if (playerMode != PlayerMode.MINI && !liveVm.externalPlayerOn.value) playerMode = PlayerMode.FULLSCREEN
@@ -1197,6 +1228,8 @@ fun OwnTVShell(
                     liveVm.playCatchupProgramme(ch, prog)
                     zapSource = MainSection.LIVE_TV
                     homeVm.stopPreview()
+                    browseOverVideo = false
+                    backdropChannel = null
                     if (playerMode != PlayerMode.MINI) playerMode = PlayerMode.FULLSCREEN
                 }
                 Box(
@@ -1269,7 +1302,7 @@ fun OwnTVShell(
                             onOpenPlaylist = { /* Phase 6: open setup/playlist */ },
                             // Settings is reached through More now, so Back out of its root goes
                             // back there rather than to the rail — one level out, not two.
-                            onBack = { liveReturn?.let(returnFromGuide) ?: run { restoreFocus = true; onSelectSection(MainSection.MORE) } },
+                            onBack = { if (overVideo) closeBrowse() else { restoreFocus = true; onSelectSection(MainSection.MORE) } },
                             openEpgAdd = openEpgAdd,
                             onEpgAddConsumed = { openEpgAdd = false },
                             start = settingsStart,
@@ -1434,6 +1467,7 @@ fun OwnTVShell(
 
                         selectedSection == MainSection.EPG -> EpgScreen(
                             pinnedChannel = guidePinned,
+                            overVideo = overVideo,
                             onFullscreen = { openFullscreen() },
                             onPlayChannel = guidePlayChannel,
                             onPlayCatchup = guidePlayCatchup,
@@ -1534,7 +1568,7 @@ fun OwnTVShell(
         // The solid-mode wizard aura is deliberately drawn after the opaque browse surfaces so it
         // remains visible, exactly like the approved concept. It never intercepts input; fullscreen
         // video and glass mode skip it entirely. Global Animations Off also freezes the slow pulse.
-        SolidAmbientBackdrop(
+        if (!overVideo) SolidAmbientBackdrop(
             glowEnabled = ambientGlowEnabled,
             pulseEnabled = ambientGlowPulse && shellAnimationLevel != tv.own.owntv.core.theme.AnimationLevel.OFF,
             modifier = Modifier.fillMaxSize(),
@@ -1675,7 +1709,7 @@ fun OwnTVShell(
                     },
                 )
             }
-            if (isFull && !autoFrameRate && !afrPrompted) {
+            if (isFull && !overVideo && !autoFrameRate && !afrPrompted) {
                 // Frame rate of whichever engine is on screen. On the mpv side this is what the direct
                 // path judders on; on Exo it now survives "Measured stream stats" being off (F14).
                 val activeFps by if (liveOnExo) {
@@ -1698,7 +1732,7 @@ fun OwnTVShell(
                     onDismiss = { scope.launch { settingsRepo.setAutoFrameRatePrompted() } },
                 )
             }
-            if (isFull) {
+            if (isFull && !overVideo) {
                 // Engine state still distinguishes the live edge from catch-up/archive playback for
                 // controls such as direct number tuning. It must not gate the physical CH keys below.
                 val isLiveStream = liveOnExo || player.isLiveContent
@@ -1961,7 +1995,7 @@ fun OwnTVShell(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-            } else {
+            } else if (!isFull) {
                 MiniPlayer(
                     player = if (liveOnExo) liveVm.previewEngine else mpvEngine,
                     onExpand = expandPlayer,

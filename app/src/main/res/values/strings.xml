@@ -4,4 +4,6 @@
     <string name="content_search_movies">Search movies…</string>
     <string name="content_search_series">Search series…</string>
     <string name="tivi_guide_ok_full_screen">OK watches full screen</string>
+    <string name="tivi_overlay_opacity">Menu opacity over video</string>
+    <string name="tivi_overlay_opacity_description">How much menus opened over a playing channel cover the picture</string>
 </resources>

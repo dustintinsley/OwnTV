@@ -176,6 +176,8 @@ fun EpgScreen(
      *  playing in the video while focus moves through the grid; with it on, the video starts on it and
      *  then follows the focused row as usual. */
     pinnedChannel: ChannelEntity? = null,
+    /** TV layout: drawn over the full-screen channel, so the video corner is a frame onto it. */
+    overVideo: Boolean = false,
 ) {
     val vm: EpgViewModel = koinViewModel()
     // Live TV's view model: its preview player (no second decoder), its category list and playlist marks.
@@ -446,6 +448,7 @@ fun EpgScreen(
             nowTitle = videoChannel?.let { ch -> programmeAt(vm.cachedProgrammes(ch), liveNow)?.takeIf { liveNow < it.stopMs }?.title },
             previewEngine = liveVm.previewEngine,
             showVideo = if (pinned != null) previewEnabled else effectivePreview && (previewArmed || pinnedChannel != null),
+            seeThrough = overVideo,
             modifier = Modifier.width(640.mpx),
         )
         // … and the programme under the cursor, with what it can do.

@@ -302,6 +302,9 @@ fun SettingsScreen(
     val saveScroll = { savedScrollPx = pageScroll.value }
     // The rows column: fresh entry and a lost focus land here, on the page's first row.
     val rowsFocus = remember { FocusRequester() }
+    val tiviSettingsContext = androidx.compose.ui.platform.LocalContext.current
+    val overlayOpacity by remember(tiviSettingsContext) { tv.own.owntv.features.tivi.TiviPrefs.overlayOpacityFlow(tiviSettingsContext) }
+        .collectAsStateWithLifecycle()
     // TV layout: the category list's row for the group on show, where a fresh entry lands.
     val categoryFocus = remember { FocusRequester() }
     // Set when the category list changed the group: the list keeps focus instead of the rows taking it.
@@ -632,6 +635,25 @@ fun SettingsScreen(
             chipTone = TileTone.SECONDARY,
             focus = focusHighlightRowFocus,
             onClick = { saveScroll(); dialogReturn = focusHighlightRowFocus; showFocusHighlight = true },
+        ),
+        // TV layout: how see-through menus are when they open over the playing video. ◀ ▶ step it, OK cycles.
+        RootRow(
+            "tivi_overlay_opacity", TileTone.SECONDARY, OwnTVIcon.LAYERS,
+            title = stringResource(R.string.tivi_overlay_opacity),
+            desc = stringResource(R.string.tivi_overlay_opacity_description),
+            value = SettingValue.Stepper(stringResource(R.string.common_percent, overlayOpacity)),
+            onStep = { d ->
+                tv.own.owntv.features.tivi.TiviPrefs.setOverlayOpacity(
+                    tiviSettingsContext, overlayOpacity + d * tv.own.owntv.features.tivi.TiviPrefs.OPACITY_STEP,
+                )
+            },
+            onClick = {
+                val next = overlayOpacity + tv.own.owntv.features.tivi.TiviPrefs.OPACITY_STEP
+                tv.own.owntv.features.tivi.TiviPrefs.setOverlayOpacity(
+                    tiviSettingsContext,
+                    if (next > tv.own.owntv.features.tivi.TiviPrefs.OPACITY_MAX) tv.own.owntv.features.tivi.TiviPrefs.OPACITY_MIN else next,
+                )
+            },
         ),
         // Glass Effect has enough controls to be a full settings screen; the root row only summarizes it.
         RootRow(
