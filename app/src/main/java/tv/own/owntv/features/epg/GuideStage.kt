@@ -515,6 +515,8 @@ internal fun GuideOrderMenu(
     showPreview: Boolean,
     onShowPreview: (Boolean) -> Unit,
     onDismiss: () -> Unit,
+    okFullScreen: Boolean = false,
+    onOkFullScreen: ((Boolean) -> Unit)? = null,
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -539,6 +541,13 @@ internal fun GuideOrderMenu(
             value = stringResource(if (showPreview) R.string.common_on else R.string.common_off),
             onClick = { onShowPreview(!showPreview); onDismiss() },
         )
+        onOkFullScreen?.let { set ->
+            StageMenuItem(
+                text = stringResource(R.string.tivi_guide_ok_full_screen), icon = OwnTVIcon.EXPAND,
+                value = stringResource(if (okFullScreen) R.string.common_on else R.string.common_off),
+                onClick = { set(!okFullScreen); onDismiss() },
+            )
+        }
     }
 }
 

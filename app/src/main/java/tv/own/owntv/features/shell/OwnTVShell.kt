@@ -620,7 +620,7 @@ fun OwnTVShell(
             guidePinned = playing
             scope.launch {
                 withFrameNanos { }
-                liveVm.playPreview(playing)
+                liveVm.playPreviewWithSound(playing)
             }
         }
         if (section == MainSection.SEARCH) {

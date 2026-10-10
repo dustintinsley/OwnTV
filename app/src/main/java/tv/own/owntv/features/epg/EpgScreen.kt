@@ -204,6 +204,9 @@ fun EpgScreen(
     val previewChannel by liveVm.previewChannel.collectAsStateWithLifecycle()
     val previewArmed by liveVm.previewArmed.collectAsStateWithLifecycle()
     val guidePreview by vm.guidePreview.collectAsStateWithLifecycle()
+    // TV layout: OK on a channel row goes straight to full screen (the Order ▾ menu switches it).
+    val tiviContext = androidx.compose.ui.platform.LocalContext.current
+    var okFullScreen by remember { mutableStateOf(tv.own.owntv.features.tivi.TiviPrefs.guideOkFullScreen(tiviContext)) }
 
     // Live TV's Guide view shows Live TV's own category; the TV Guide keeps its own choice.
     val categoryKey: LiveKey? = if (liveMode) liveSelected.takeUnless { it == LiveKey.All } else categoryFilter
@@ -589,6 +592,7 @@ fun EpgScreen(
                                     },
                                     onOk = { p -> onOk(channel, p) },
                                     onMenu = { p -> returnTo = null; if (p != null) menuFor = channel to p else channelMenuFor = channel },
+                                    okWatches = okFullScreen,
                                 )
                             }
                         }
@@ -673,6 +677,11 @@ fun EpgScreen(
             current = sortGuide, onPick = vm::setGuideSort,
             showEmpty = showEmpty, onShowEmpty = vm::setShowEmpty,
             showPreview = guidePreview, onShowPreview = vm::setGuidePreview,
+            okFullScreen = okFullScreen,
+            onOkFullScreen = { on ->
+                okFullScreen = on
+                tv.own.owntv.features.tivi.TiviPrefs.setGuideOkFullScreen(tiviContext, on)
+            },
             onDismiss = { orderOpen = false },
         )
     }
@@ -775,6 +784,8 @@ private fun GuideRow(
     onStep: (Int) -> Boolean,
     onOk: (EpgProgrammeEntity?) -> Unit,
     onMenu: (EpgProgrammeEntity?) -> Unit,
+    /** TV layout option: OK on a row (before ▶ steps into its programmes) watches the channel full screen. */
+    okWatches: Boolean = false,
 ) {
     // Cache peek first, so a row scrolled back into view draws at once; a miss reads this one channel.
     val cacheRevision by vm.cacheRevision.collectAsStateWithLifecycle()
@@ -807,7 +818,14 @@ private fun GuideRow(
                             val repeat = e.nativeKeyEvent.repeatCount
                             if (down && repeat == 0) okDown = true
                             else if (down && okDown) { okDown = false; onMenu(programmeAt(progs, cursorTime)) }
-                            else if (!down && okDown) { okDown = false; if (cellMode) onOk(programmeAt(progs, cursorTime)) else onEnterCell() }
+                            else if (!down && okDown) {
+                                okDown = false
+                                when {
+                                    cellMode -> onOk(programmeAt(progs, cursorTime))
+                                    okWatches -> onOk(null)
+                                    else -> onEnterCell()
+                                }
+                            }
                             true
                         }
                         Key.Menu -> { if (down) onMenu(programmeAt(progs, cursorTime)); true }
