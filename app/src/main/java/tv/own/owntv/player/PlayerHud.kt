@@ -222,6 +222,13 @@ fun PlayerHud(
     // N6 — Settings → "Left and right rewind live TV": with the controls hidden, Left/Right on a
     // catch-up channel scrub instead of opening the lists. Films always seek.
     liveLeftRightRewinds: Boolean = false,
+    // TV layout: OK with the controls hidden opens the channel overlay instead of the controls, which
+    // a long press of OK (or any other key) still reveals. Null keeps OK revealing the controls.
+    onSelectPressed: (() -> Unit)? = null,
+    // TV layout: start with the controls hidden, so a channel opens to the picture and its banner.
+    startHidden: Boolean = false,
+    // TV layout draws its own channel banner along the bottom; this hides the top-left zap card.
+    showZapCard: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     // T14 — nothing that ticks is read in this root scope: with the controls hidden it used to recompose
@@ -279,7 +286,7 @@ fun PlayerHud(
     val showNextCard = !isLive && error == null && nav.hasNext && nextUpTitle != null && !stopsAtItemEnd &&
         nextCardDue && !autoNextDismissed
 
-    var controlsVisible by remember { mutableStateOf(true) }
+    var controlsVisible by remember { mutableStateOf(!startHidden) }
     var showInfo by remember { mutableStateOf(false) } // stream technical-info overlay
     // Used only by "Report this stream", which writes the current readout into the playback log (F18).
     val reportContext = androidx.compose.ui.platform.LocalContext.current
@@ -541,6 +548,19 @@ fun PlayerHud(
                     }
                 }
             }
+            // TV layout: OK over the bare picture opens the channel overlay. Acted on at KeyUp and both
+            // halves are consumed, so the release cannot land on (and click) the row the overlay
+            // focuses. Held past the long-press threshold, it reveals the controls instead.
+            if (onSelectPressed != null && !controlsVisible && !inert && dialog == HudDialog.NONE && !digitsActive &&
+                error == null && !showNextCard &&
+                (e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter)
+            ) {
+                if (e.type == KeyEventType.KeyUp) {
+                    val held = e.nativeKeyEvent.eventTime - e.nativeKeyEvent.downTime
+                    if (held >= PLAYER_SHORTCUT_LONG_PRESS_MS) controlsVisible = true else onSelectPressed()
+                }
+                return@onPreviewKeyEvent true
+            }
             // ---- Existing key handling (unchanged, but skip for digit KeyUp already consumed above) ----
             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when {
@@ -613,7 +633,7 @@ fun PlayerHud(
                 .padding(start = 28.dp, top = if (controlsVisible) 92.dp else 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (isLive && (tuned != null || (showFlash && !controlsVisible))) {
+            if (isLive && (tuned != null || (showZapCard && showFlash && !controlsVisible))) {
                 // A fresh tune drives the card from the lookup result, not player metadata: the Stalker and
                 // mpv paths publish their metadata after an async resolve, which would show the old channel.
                 if (tuned != null) {

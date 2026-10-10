@@ -456,9 +456,15 @@ fun OwnTVShell(
     // profile that is immediately; profile/PIN gates keep the shell out of composition until authorized.
     val resumeSettings = koinInject<tv.own.owntv.core.settings.SettingsRepository>()
     val startupChannelUnavailable = androidx.compose.ui.res.stringResource(tv.own.owntv.R.string.settings_startup_channel_unavailable)
+    val startupContext = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         if (playerMode != PlayerMode.NONE) return@LaunchedEffect
         val pid = resumeSettings.activeProfileId.first()
+        // TV layout is live-first: each profile starts on its last channel, full screen. Applied once
+        // per profile, so a profile that later picks another startup in Settings keeps its choice.
+        tv.own.owntv.features.tivi.TiviDefaults.applyLiveFirstOnce(startupContext, pid) { mode ->
+            resumeSettings.setStartupMode(pid, mode)
+        }
         when (resumeSettings.startupMode(pid).first()) {
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> {
                 val ch = liveVm.lastWatchedLiveChannel()
@@ -468,6 +474,9 @@ fun OwnTVShell(
                     // provider context instead of permanently arming a one-item list that disables CH+/CH-.
                     liveVm.watchFullscreen(ch, emptyList())
                     playerMode = PlayerMode.FULLSCREEN
+                } else if (ch == null && playerMode == PlayerMode.NONE) {
+                    // Nothing watched yet (a fresh install): the channel list is the place to start.
+                    onSelectSection(MainSection.LIVE_TV)
                 }
             }
             // Open straight to Live TV on the Favorites folder, with focus landing inside the channel list
@@ -571,6 +580,35 @@ fun OwnTVShell(
         restoreFocus = true
         focusRail()
         Unit
+    }
+    // TV layout — the menu at the far left of the channel overlay. Sections the playlist hides stay
+    // hidden; Search, More and Settings are always there, as they are in the rail.
+    val tiviMenuSections = remember(visibleSections) {
+        listOf(
+            MainSection.EPG, MainSection.LIVE_TV, MainSection.HOME, MainSection.MOVIES, MainSection.SERIES,
+            MainSection.SEARCH, MainSection.DOWNLOADS, MainSection.MORE, MainSection.SETTINGS,
+        ).filter { it in visibleSections || it == MainSection.SEARCH || it == MainSection.MORE || it == MainSection.SETTINGS }
+    }
+    // Leaving live TV for another section from that menu: the player closes, the section opens.
+    val openSectionFromPlayer: (MainSection) -> Unit = { section ->
+        showChannelList = false
+        exitPlayer()
+        if (section == MainSection.SEARCH) {
+            searchVm.setQuery("")
+            trendingSearchActive = false
+            restoreTrendingSearchFocus = false
+        }
+        onSelectSection(section)
+    }
+    // TV layout — the bottom channel banner shows for a few seconds whenever full-screen live TV
+    // opens or changes channel.
+    var tiviInfoBarVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(previewChannel?.id, playerMode, zapSource) {
+        if (playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && previewChannel != null) {
+            tiviInfoBarVisible = true
+            kotlinx.coroutines.delay(TIVI_INFO_BAR_MS)
+        }
+        tiviInfoBarVisible = false
     }
     /**
      * Turn the channel on screen into tile 1 of the grid, with [extra] filling the tiles after it.
@@ -875,6 +913,11 @@ fun OwnTVShell(
 
     BackHandler {
         when {
+            // TV layout: live TV full screen is the home of the app, so Back there asks to exit (the
+            // channel overlay's menu is the way into everything else). Films and catch-up close as before.
+            playerMode == PlayerMode.FULLSCREEN && showExit -> showExit = false
+            playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && timeshifted -> liveVm.goToLive()
+            playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && multiview == null -> showExit = true
             playerMode == PlayerMode.FULLSCREEN -> exitPlayer()
             showAvatarPicker -> showAvatarPicker = false
             showPlaylistPicker -> showPlaylistPicker = false
@@ -1687,6 +1730,11 @@ fun OwnTVShell(
                     // "End of programme" only at the live edge: rewound, the programme on air is not the one being watched.
                     sleepProgrammeEndMs = if (isTunedLive && !timeshifted) { { liveVm.nowNext.value?.now?.stopMs } } else null,
                     liveLeftRightRewinds = liveLeftRightRewinds,
+                    // TV layout: OK opens the channel overlay, the picture opens bare, and the bottom
+                    // banner below replaces the top-left zap card.
+                    onSelectPressed = if (isTunedLive) { { showChannelList = true } } else null,
+                    startHidden = isTunedLive,
+                    showZapCard = !isTunedLive,
                     timeshiftOffsetSec = if (isTunedLive) { { timeshiftOffsetState.value } } else null,
                     onTuneToNumber = if (directTuneEnabled && isTunedLive && isLiveStream && !timeshifted && previewChannel != null) liveVm::tuneByNumber else null,
                     directTuneContextKey = previewChannel?.id ?: 0L,
@@ -1828,37 +1876,41 @@ fun OwnTVShell(
                         onGoLive = liveVm::dismissTimeshiftResume,
                     )
                 }
-                // Left — the playing channel's own provider category.
-                if (showChannelList && isLiveChannel) {
-                    if (showCategoryBrowser) {
-                        // Second Left — every Live TV category.
-                        tv.own.owntv.features.shell.components.CategoryBrowserOverlay(
-                            railItems = browserRailItems,
-                            railCounts = browserRailCounts,
-                            // The list the player zaps in: a built-in rail or custom category when it came from one.
-                            currentKey = zapListKey ?: previewChannel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
-                            onSelect = { key -> liveVm.loadChannelsForCategory(key) },
-                            onDismiss = { liveVm.hideCategoryBrowser() },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else if (zapChannels.isNotEmpty()) {
-                        // First Left — the channels of the current category. A browsed-to category may
-                        // hold a single channel, so this renders for any non-empty list.
-                        tv.own.owntv.features.shell.components.ChannelListOverlay(
-                            channels = zapChannels,
-                            currentId = previewChannel?.id,
-                            nowPlaying = overlayNowPlaying,
-                            nowProgrammes = overlayProgrammes,
-                            favoriteIds = overlayFavoriteIds,
-                            playlistMarks = overlayPlaylistMarks,
-                            title = zapOverlayTitle,
-                            showNumbers = directTuneEnabled,
-                            onSelect = { liveVm.ensurePlaying(it); showChannelList = false },
-                            onDismiss = { showChannelList = false },
-                            onOpenCategories = { liveVm.showCategories() },
-                            modifier = Modifier.fillMaxSize(),
+                // The channel banner after every channel change (TV layout), under the overlays.
+                if (isTunedLive && tiviInfoBarVisible && !showChannelList && !showHistoryList) {
+                    previewChannel?.let { ch ->
+                        val bannerGuide by liveVm.nowNext.collectAsStateWithLifecycle()
+                        tv.own.owntv.features.tivi.TiviInfoBar(
+                            channel = ch,
+                            nowNext = bannerGuide,
+                            showNumber = directTuneEnabled,
+                            modifier = Modifier.align(Alignment.BottomCenter),
                         )
                     }
+                }
+                // OK or Left — the TV overlay: this group's channels, the groups, then the main menu.
+                if (showChannelList && isLiveChannel) {
+                    tv.own.owntv.features.tivi.TiviChannelOverlay(
+                        channels = zapChannels,
+                        playingId = previewChannel?.id,
+                        groupTitle = zapOverlayTitle,
+                        railItems = browserRailItems,
+                        railCounts = browserRailCounts,
+                        // The list the player zaps in: a built-in rail or custom category when it came from one.
+                        currentGroupKey = zapListKey ?: previewChannel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
+                        nowProgrammes = overlayProgrammes,
+                        nowPlaying = overlayNowPlaying,
+                        favoriteIds = overlayFavoriteIds,
+                        showNumbers = directTuneEnabled,
+                        menuSections = tiviMenuSections,
+                        onPlay = { liveVm.ensurePlaying(it); showChannelList = false },
+                        onToggleFavorite = { liveVm.toggleFavorite(it) },
+                        onPickGroup = { key -> liveVm.loadChannelsForCategory(key) },
+                        onOpenSection = openSectionFromPlayer,
+                        onExit = { showChannelList = false; showExit = true },
+                        onDismiss = { showChannelList = false },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
                 // Right — recently watched, to hop straight back to the previous channel.
                 if (showHistoryList && isLiveChannel && historyChannels.isNotEmpty()) {
@@ -2118,3 +2170,6 @@ private fun railDetail(section: MainSection, d: RailDetails): String? = when (se
 
 /** How recently ◀ / ▶ or [focusRail] must have happened for a rail visit to open the rail. */
 private const val RAIL_KEY_WINDOW_MS = 400L
+
+/** How long the TV layout's channel banner stays up after a channel change. */
+private const val TIVI_INFO_BAR_MS = 5_000L
