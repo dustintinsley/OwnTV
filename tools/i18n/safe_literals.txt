@@ -649,7 +649,7 @@
 12	empty	app/src/main/java/tv/own/owntv/features/setup/SetupViewModel.kt	\0
 5	empty	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	\0
 2	technical	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	+
-4	technical	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	\0
+5	technical	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	\0
 2	protocol	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	Action
 1	protocol	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	All Channels
 1	protocol	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	All Downloads
@@ -843,6 +843,8 @@
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	machine_translated
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	movie_name
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	release
+1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	live_first_applied_$profileId
+1	preference-key	app/src/main/java/tv/own/owntv/features/tivi/TiviDefaults.kt	tivi_layout
 4	empty	app/src/main/java/tv/own/owntv/features/update/UpdateDialog.kt	\0
 2	technical	app/src/main/java/tv/own/owntv/features/update/UpdateDialog.kt	##
 2	technical	app/src/main/java/tv/own/owntv/features/update/UpdateDialog.kt	###

@@ -248,7 +248,7 @@ fun TiviChannelOverlay(
                                     modifier = Modifier.weight(1f),
                                 )
                                 group.count?.let {
-                                    Text(it.toString(), style = stageText(16, 500), color = StageColors.Dim, maxLines = 1)
+                                    Text(it.toString(), style = stageText(16, 500), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
@@ -341,7 +341,7 @@ private fun TiviHeader(title: String, trailing: String?) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
-        trailing?.let { Text(it, style = stageText(18, 500), color = StageColors.Dim, maxLines = 1) }
+        trailing?.let { Text(it, style = stageText(18, 500), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 
@@ -415,7 +415,7 @@ private fun TiviChannelRow(
                 channel.number?.toString().orEmpty(),
                 style = stageText(20, 600),
                 color = if (playing) accent else StageColors.Dim,
-                maxLines = 1,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.width(64.mpx),
             )
         }
@@ -481,7 +481,7 @@ private fun TiviProgrammePane(channel: ChannelEntity, programme: XtEpgEntry, mod
             stringResource(R.string.content_live_time_range_plain, formatTime(programme.startMs), formatTime(programme.stopMs)),
             style = stageText(18, 500),
             color = StageColors.Muted,
-            maxLines = 1,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         TiviProgress(progressOf(programme), Modifier.width(420.mpx))
         programme.description?.takeIf { it.isNotBlank() }?.let {
@@ -528,7 +528,7 @@ private fun TiviMenuColumn(
                 stringResource(R.string.common_exit),
                 style = stageText(21, 600),
                 color = if (focused) Color.White else StageColors.ItemText,
-                maxLines = 1,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -544,7 +544,7 @@ internal fun TiviClock(modifier: Modifier = Modifier, size: Int = 30) {
             delay(5_000)
         }
     }
-    Text(formatTime(now), style = stageText(size, 700), color = Color.White, maxLines = 1, modifier = modifier)
+    Text(formatTime(now), style = stageText(size, 700), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
 private val MainSection.tiviIcon: OwnTVIcon

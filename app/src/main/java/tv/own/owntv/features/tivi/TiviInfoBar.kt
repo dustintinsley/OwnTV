@@ -63,7 +63,7 @@ fun TiviInfoBar(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.mpx)) {
                     if (showNumber) {
                         channel.number?.let {
-                            Text(it.toString(), style = stageText(28, 800), color = stageAccent.accent, maxLines = 1)
+                            Text(it.toString(), style = stageText(28, 800), color = stageAccent.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     Text(name, style = stageText(28, 800), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -83,21 +83,29 @@ fun TiviInfoBar(
                             stringResource(R.string.content_live_time_range_plain, formatTime(now.startMs), formatTime(now.stopMs)),
                             style = stageText(18, 500),
                             color = StageColors.Muted,
-                            maxLines = 1,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                     TiviProgress(progressOf(now), Modifier.width(720.mpx).padding(vertical = 4.mpx))
                 } else {
-                    Text(stringResource(R.string.content_no_epg), style = stageText(20, 500), color = StageColors.Muted, maxLines = 1)
+                    Text(stringResource(R.string.content_no_epg), style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 nowNext?.next?.let { next ->
-                    Text(
-                        stringResource(R.string.content_live_next_label, formatTime(next.startMs)) + "  " + next.title,
-                        style = stageText(18, 500),
-                        color = StageColors.Muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.mpx)) {
+                        Text(
+                            stringResource(R.string.content_live_next_label, formatTime(next.startMs)),
+                            style = stageText(18, 700),
+                            color = StageColors.Muted,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            next.title,
+                            style = stageText(18, 500),
+                            color = StageColors.Muted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(32.mpx))
