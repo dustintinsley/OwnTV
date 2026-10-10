@@ -21,4 +21,14 @@ object TiviDefaults {
         runCatching { setStartupMode(StartupMode.LAST_CHANNEL) }
             .onSuccess { prefs.edit { putBoolean(key, true) } }
     }
+
+    /** The navigation rail floats (hidden until called) rather than docking, once per install. */
+    suspend fun applyFloatingNavOnce(context: Context, setFloating: suspend () -> Unit) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(FLOATING_NAV_KEY, false)) return
+        runCatching { setFloating() }
+            .onSuccess { prefs.edit { putBoolean(FLOATING_NAV_KEY, true) } }
+    }
+
+    private const val FLOATING_NAV_KEY = "floating_nav_applied"
 }

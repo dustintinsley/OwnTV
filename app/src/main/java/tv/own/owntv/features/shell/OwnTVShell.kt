@@ -465,6 +465,10 @@ fun OwnTVShell(
         tv.own.owntv.features.tivi.TiviDefaults.applyLiveFirstOnce(startupContext, pid) { mode ->
             resumeSettings.setStartupMode(pid, mode)
         }
+        // ...and the menu stays out of the way until ◀ calls it, rather than a rail docked down the left.
+        tv.own.owntv.features.tivi.TiviDefaults.applyFloatingNavOnce(startupContext) {
+            resumeSettings.setNavStyle(tv.own.owntv.core.settings.SettingsRepository.NavStyle.FLOATING)
+        }
         when (resumeSettings.startupMode(pid).first()) {
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> {
                 val ch = liveVm.lastWatchedLiveChannel()
@@ -589,10 +593,36 @@ fun OwnTVShell(
             MainSection.SEARCH, MainSection.DOWNLOADS, MainSection.MORE, MainSection.SETTINGS,
         ).filter { it in visibleSections || it == MainSection.SEARCH || it == MainSection.MORE || it == MainSection.SETTINGS }
     }
+    // TV layout — the guide opened from live TV keeps that channel playing in its video, and Back
+    // returns to it full screen. Null whenever the guide was reached any other way.
+    var guidePinned by remember { mutableStateOf<ChannelEntity?>(null) }
+    LaunchedEffect(selectedSection, playerMode) {
+        if (selectedSection != MainSection.EPG || playerMode != PlayerMode.NONE) guidePinned = null
+    }
+    val returnFromGuide: (ChannelEntity) -> Unit = { ch ->
+        guidePinned = null
+        restoreFocus = false
+        liveVm.watchFromGuide(ch)
+        zapSource = MainSection.LIVE_TV
+        homeVm.stopPreview()
+        if (!liveVm.externalPlayerOn.value) playerMode = PlayerMode.FULLSCREEN
+    }
     // Leaving live TV for another section from that menu: the player closes, the section opens.
     val openSectionFromPlayer: (MainSection) -> Unit = { section ->
+        val playing = previewChannel?.takeIf { zapSource == MainSection.LIVE_TV }
         showChannelList = false
         exitPlayer()
+        if (section == MainSection.EPG && playing != null) {
+            // The guide opens on the group being watched, at the playing channel's row, and the
+            // channel carries on in the guide's video.
+            epgVm.setCategoryFilter(zapListKey ?: playing.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) })
+            epgVm.noteChannelTuned(playing)
+            guidePinned = playing
+            scope.launch {
+                withFrameNanos { }
+                liveVm.playPreview(playing)
+            }
+        }
         if (section == MainSection.SEARCH) {
             searchVm.setQuery("")
             trendingSearchActive = false
@@ -919,6 +949,8 @@ fun OwnTVShell(
             playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && timeshifted -> liveVm.goToLive()
             playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && multiview == null -> showExit = true
             playerMode == PlayerMode.FULLSCREEN -> exitPlayer()
+            // TV layout: Back from the guide opened over live TV goes back to that channel, full screen.
+            playerMode == PlayerMode.NONE && selectedSection == MainSection.EPG && guidePinned != null -> guidePinned?.let(returnFromGuide)
             showAvatarPicker -> showAvatarPicker = false
             showPlaylistPicker -> showPlaylistPicker = false
             showExit -> showExit = false
@@ -1388,6 +1420,7 @@ fun OwnTVShell(
                         )
 
                         selectedSection == MainSection.EPG -> EpgScreen(
+                            pinnedChannel = guidePinned,
                             onFullscreen = { openFullscreen() },
                             onPlayChannel = guidePlayChannel,
                             onPlayCatchup = guidePlayCatchup,
