@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.os.SystemClock
 import android.util.Log
 import androidx.room.useWriterConnection
 import android.view.WindowManager
@@ -73,15 +72,6 @@ open class MainActivity : ComponentActivity() {
         /** Bounded wait for the startup database probe (see [probeDatabase]). */
         private const val DB_PROBE_TIMEOUT_MS = 5_000L
 
-        /**
-         * Hard ceiling on the ST3 splash. A stuck DataStore/profile read must never leave the user
-         * staring at a static logo — past this the splash dismisses whatever the state is.
-         *
-         * Kept short deliberately: the old build drew its (blank) first frame at ~1.1s, so anything
-         * beyond ~2s of splash is a perceived-responsiveness regression even though the app is doing
-         * strictly less work than before.
-         */
-        private const val SPLASH_TIMEOUT_MS = 2_000L
     }
 
     /**
@@ -173,10 +163,10 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // ST3 — must be installed BEFORE super.onCreate() per the library's contract. It also applies
         // postSplashScreenTheme (Theme.OwnTV), so the activity ends up in the same theme as before.
-        val splash = installSplashScreen()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-        val splashDeadline = SystemClock.uptimeMillis() + SPLASH_TIMEOUT_MS
-        splash.setKeepOnScreenCondition { !contentReady && SystemClock.uptimeMillis() < splashDeadline }
+        // TV layout: no launch screen hold and no logo. The window shows the app's dark background
+        // and the first frame replaces it as soon as it draws, rather than waiting on the profile load.
         pendingDeepLink = LauncherDeepLink.parse(intent.data)
         Log.d(TAG, "onCreate deepLinkHost=${intent.data?.host} deepLinkType=${pendingDeepLink?.javaClass?.simpleName ?: "none"}")
         val dbError = probeDatabase()
