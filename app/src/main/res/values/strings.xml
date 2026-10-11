@@ -6,4 +6,9 @@
     <string name="tivi_guide_ok_full_screen">OK watches full screen</string>
     <string name="tivi_overlay_opacity">Menu opacity over video</string>
     <string name="tivi_overlay_opacity_description">How much menus opened over a playing channel cover the picture</string>
+    <string name="tivi_welcome_to">Welcome to</string>
+    <string name="tivi_welcome_line_playlists">Watch live TV, movies and series from your own playlists.</string>
+    <string name="tivi_welcome_line_guide">A TV guide with catch-up, reminders and recordings.</string>
+    <string name="tivi_welcome_line_phone">Set it up from your phone, or copy everything from another TV.</string>
+    <string name="tivi_welcome_disclaimer">OwnTV doesn\'t provide any channels or content. By continuing you agree to use it only with sources you have the right to watch.</string>
 </resources>
